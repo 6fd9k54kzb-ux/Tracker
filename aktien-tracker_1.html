@@ -255,28 +255,47 @@ function entryUSDColor(entryUSD, priceData){
 // Blink: live price within 1.5% of any stored entry zone
 // For USD stocks: compare live USD price to entryUSD values
 // For EUR stocks: compare live EUR price to entryEUR values
-function shouldBlink(stock, priceData){
-  if(!priceData)return false;
+const SC_CLR={aggressive:'#ef4444',moderate:'#f59e0b',conservative:'#10b981'};
+
+function getBlinkState(stock, priceData){
+  if(!priceData)return null;
   const livePrice=parseFloat(priceData.price);
-  if(isNaN(livePrice))return false;
+  if(isNaN(livePrice))return null;
+  let entryHit=null, targetHit=null;
+
   for(const sc of SCENARIO_KEYS){
     const s=stock.scenarios[sc];
-    // Primary: compare USD price to entryUSD (for USD stocks)
     if(stock.currency==='USD'&&s.entryUSD){
       const entry=parseFloat(s.entryUSD);
-      if(!isNaN(entry)&&entry>0&&Math.abs(livePrice-entry)/entry<=0.015)return true;
-    }
-    // Fallback: compare EUR price to entryEUR
-    if(s.entryEUR){
-      let livePriceEUR=livePrice;
-      if(priceData.currency==='USD'&&stock.eurUsd){
-        livePriceEUR=livePrice/parseFloat(stock.eurUsd);
+      if(!isNaN(entry)&&entry>0&&Math.abs(livePrice-entry)/entry<=0.015){
+        entryHit={color:SC_CLR[sc],scenario:sc};break;
       }
+    }
+    if(!entryHit&&s.entryEUR){
+      let livePriceEUR=livePrice;
+      if(priceData.currency==='USD'&&stock.eurUsd)livePriceEUR=livePrice/parseFloat(stock.eurUsd);
       const entry=parseFloat(s.entryEUR);
-      if(!isNaN(livePriceEUR)&&!isNaN(entry)&&entry>0&&Math.abs(livePriceEUR-entry)/entry<=0.015)return true;
+      if(!isNaN(livePriceEUR)&&!isNaN(entry)&&entry>0&&Math.abs(livePriceEUR-entry)/entry<=0.015){
+        entryHit={color:SC_CLR[sc],scenario:sc};break;
+      }
     }
   }
-  return false;
+
+  for(const sc of SCENARIO_KEYS){
+    const s=stock.scenarios[sc];
+    for(const tKey of['target1','target2','target3']){
+      if(!s[tKey])continue;
+      const target=parseFloat(s[tKey].replace(/[^0-9.]/g,''));
+      if(!isNaN(target)&&target>0&&Math.abs(livePrice-target)/target<=0.01){
+        targetHit={color:SC_CLR[sc],scenario:sc};break;
+      }
+    }
+    if(targetHit)break;
+  }
+
+  if(!entryHit&&!targetHit)return null;
+  const blinkColor=entryHit?entryHit.color:targetHit.color;
+  return{entryHit,targetHit,blinkColor};
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -355,8 +374,10 @@ async function loadCardPrice(id,tvSymbol){
   }
   const chgClr=p.change.startsWith('+')?'#10b981':'#ef4444';
   const sym=p.currency==='EUR'?'€':'$';
-  const blink=stock&&shouldBlink(stock,p);
-  const blinkClass=blink?' price-blink':'';
+  const bs=stock?getBlinkState(stock,p):null;
+  const blinkClass=bs?' price-blink':'';
+  const blinkColor=bs?.blinkColor||'';
+  const symbols=(bs?.entryHit?'🎯':'')+(bs?.targetHit?'💰':'');
 
   // Update KO color on card
   if(stock){
@@ -369,8 +390,8 @@ async function loadCardPrice(id,tvSymbol){
 
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
     <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:16px;font-weight:800${blink?';color:#f59e0b':''}" class="${blinkClass}">${sym}${p.price}</span>
-      <span style="font-size:12px;font-weight:600;color:${chgClr}">${p.change} (${p.changePct})</span>
+      <span style="font-size:16px;font-weight:800${blinkColor?';color:'+blinkColor:''}" class="${blinkClass}">${sym}${p.price}</span>
+        ${symbols?`<span style="font-size:14px">${symbols}</span>`:''}      <span style="font-size:12px;font-weight:600;color:${chgClr}">${p.change} (${p.changePct})</span>
       ${p.label?`<span style="font-size:10px;color:#6b7585;border:1px solid #1e2330;border-radius:3px;padding:1px 5px">${p.label}</span>`:''}
       <button class="btn-refresh" onclick="event.stopPropagation();reloadCardPrice('${id}','${tvSymbol}')">↻</button>
     </div>
@@ -497,14 +518,19 @@ async function loadDetailPrice(id,tvSymbol){
   }
   const chgClr=p.change.startsWith('+')?'#10b981':'#ef4444';
   const sym=p.currency==='EUR'?'€':'$';
-  const blink=stock&&shouldBlink(stock,p);
-  const blinkClass=blink?' price-blink':'';
+  const bs=stock?getBlinkState(stock,p):null;
+  const blinkClass=bs?' price-blink':'';
+  const blinkColor=bs?.blinkColor||'';
+  const symbols=(bs?.entryHit?'🎯':'')+(bs?.targetHit?'💰':'');
   const stateLabel=p.isOpen?'🟢 Live Kurs':'⚫ Letzter Kurs';
 
   el.innerHTML=`<div class="live-price-big">
     <div>
       <div class="live-price-label">${stateLabel}${p.label}</div>
-      <div class="live-price-num${blinkClass}" style="${blink?'color:#f59e0b':''}">${sym}${p.price}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+      <div class="live-price-num${blinkClass}" style="${blinkColor?'color:'+blinkColor:''}">${sym}${p.price}</div>
+      ${symbols?`<span style="font-size:20px">${symbols}</span>`:''}
+    </div>
     </div>
     <div>
       <div class="live-price-label">Änderung</div>
