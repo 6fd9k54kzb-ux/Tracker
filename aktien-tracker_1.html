@@ -289,8 +289,7 @@ function renderDashboard(){
       ${f==='all'?`📊 Alle (${cnt.all})`:STATUS_LABELS[f]}
     </button>`).join('');
 
-  const filtered=filterStatus==='all'?stocks:stocks.filter(s=>s.status===filterStatus);
-  const grid=document.getElementById('stock-grid');
+const filtered=(filterStatus==='all'?stocks:stocks.filter(s=>s.status===filterStatus)).slice().sort((a,b)=>a.ticker.localeCompare(b.ticker));  const grid=document.getElementById('stock-grid');
   if(!filtered.length){
     grid.innerHTML=`<div class="empty"><div style="font-size:44px;margin-bottom:12px">📈</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">Noch keine Aktien</div><div>Füge deine erste Aktie aus der Analyse hinzu.</div></div>`;
     return;
