@@ -289,7 +289,19 @@ function renderDashboard(){
       ${f==='all'?`📊 Alle (${cnt.all})`:STATUS_LABELS[f]}
     </button>`).join('');
 
-const filtered=(filterStatus==='all'?stocks:stocks.filter(s=>s.status===filterStatus)).slice().sort((a,b)=>a.ticker.localeCompare(b.ticker));  const grid=document.getElementById('stock-grid');
+  const filtered = filterStatus==='all'
+    ? stocks.slice()
+    : stocks.filter(s=>s.status===filterStatus);
+
+  filtered.sort((a,b)=>{
+    const ta=(a.ticker||'').toUpperCase();
+    const tb=(b.ticker||'').toUpperCase();
+    if(ta<tb)return -1;
+    if(ta>tb)return 1;
+    return 0;
+  });
+
+  const grid=document.getElementById('stock-grid');
   if(!filtered.length){
     grid.innerHTML=`<div class="empty"><div style="font-size:44px;margin-bottom:12px">📈</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">Noch keine Aktien</div><div>Füge deine erste Aktie aus der Analyse hinzu.</div></div>`;
     return;
@@ -297,7 +309,6 @@ const filtered=(filterStatus==='all'?stocks:stocks.filter(s=>s.status===filterSt
   grid.innerHTML=`<div class="grid">${filtered.map(s=>cardHTML(s)).join('')}</div>`;
   filtered.filter(s=>s.tvSymbol).forEach(s=>loadCardPrice(s.id,s.tvSymbol));
 }
-
 function setFilter(f){filterStatus=f;renderDashboard();}
 
 function cardHTML(s){
