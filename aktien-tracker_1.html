@@ -184,14 +184,21 @@ function parseV7(data){
 }
 
 function parseV8(data){
-  const meta=data?.chart?.result?.[0]?.meta;
+  const result=data?.chart?.result?.[0];
+  const meta=result?.meta;
   if(!meta)return null;
   const price=meta.regularMarketPrice||meta.previousClose;
   if(!price)return null;
-  // previousClose = gestriger Schlusskurs (korrekt)
-  // chartPreviousClose = Schlusskurs vom Anfang des Chart-Zeitraums (falsch für Tagesveränderung)
-  const prev=meta.previousClose||price;
-  const chg=price-prev, pct=prev?(chg/prev*100):0;
+  // Gestrigen Schlusskurs aus den Chart-Datenpunkten holen — zuverlässiger als meta-Felder
+  let prev=meta.regularMarketPreviousClose||meta.previousClose;
+  if(!prev||prev===price){
+    const closes=result?.indicators?.quote?.[0]?.close||[];
+    for(let i=closes.length-2;i>=0;i--){
+      if(closes[i]!=null){prev=closes[i];break;}
+    }
+  }
+  prev=prev||price;
+  const chg=price-prev,pct=prev?(chg/prev*100):0;
   const state=meta.marketState||'',isOpen=state==='REGULAR';
   const lbl=isOpen?'':state==='PRE'?' (Pre)':state.startsWith('POST')?' (After)':' (Schluss)';
   return{price:price.toFixed(2),change:(chg>=0?'+':'')+chg.toFixed(2),changePct:(pct>=0?'+':'')+pct.toFixed(2)+'%',currency:meta.currency||'USD',label:lbl,isOpen,pre:null,post:null};
