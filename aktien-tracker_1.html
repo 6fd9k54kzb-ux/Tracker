@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TR Tracker">
+<title>TR Aktien Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#0a0c0f;color:#e4e8f0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:13px;min-height:100vh}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0c0f}::-webkit-scrollbar-thumb{background:#1e2330;border-radius:3px}
+
+@keyframes blink-price {
+  0%,100%{opacity:1} 50%{opacity:0.2}
+}
+.price-blink { animation: blink-price 0.9s ease-in-out infinite; }
+
+#header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #1e2330;background:#111418;position:sticky;top:0;z-index:100}
+.logo{background:#3b82f6;color:#fff;font-weight:900;font-size:14px;padding:4px 8px;border-radius:4px;letter-spacing:1px;margin-right:10px}
+.app-title{font-size:15px;font-weight:700;letter-spacing:.5px}
+.app-sub{font-size:11px;color:#6b7585;margin-top:1px}
+#header-right{display:flex;align-items:center;gap:8px}
+.saved-badge{background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:4px;padding:3px 10px;font-size:12px}
+
+button{font-family:inherit;cursor:pointer;border-radius:5px;font-size:13px;padding:7px 14px;transition:opacity .15s}
+button:active{opacity:.7}
+.btn-primary{background:#3b82f6;color:#fff;border:none;font-weight:600}
+.btn-secondary{background:transparent;color:#e4e8f0;border:1px solid #1e2330}
+.btn-back{background:transparent;color:#6b7585;border:1px solid #1e2330}
+.btn-danger{background:transparent;color:#ef4444;border:1px solid #ef444433}
+.btn-danger.confirm{background:#ef4444;color:#fff}
+.btn-refresh{background:transparent;color:#6b7585;border:1px solid #1e2330;padding:2px 8px;font-size:12px;border-radius:4px}
+.btn-refresh-lg{background:transparent;color:#3b82f6;border:1px solid #3b82f644;padding:6px 12px;font-size:12px;border-radius:5px}
+.tv-link{font-size:11px;color:#3b82f6;text-decoration:none;border:1px solid #3b82f644;border-radius:4px;padding:2px 8px;white-space:nowrap}
+
+#main{max-width:1100px;margin:0 auto;padding:20px}
+.view{display:none}.view.active{display:block}
+
+.filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.filter-btn{background:transparent;color:#6b7585;border:1px solid #1e2330;padding:5px 12px;font-size:12px}
+.filter-btn.active{background:#3b82f622;color:#3b82f6;border-color:#3b82f666}
+
+.empty{text-align:center;padding:80px 20px;color:#6b7585}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+
+.card{background:#111418;border:1px solid #1e2330;border-radius:8px;padding:16px;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:#3b82f688}
+.card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ticker-big{font-size:20px;font-weight:900;color:#3b82f6;letter-spacing:1px}
+.currency-tag{background:#1e2a3a;color:#60a5fa;border:1px solid #3b82f633;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:6px}
+.status-badge{border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.price-row{display:flex;justify-content:space-between;align-items:center;margin:2px 0}
+.price-label{color:#6b7585;font-size:11px}
+.price-val{font-size:13px;font-weight:600}
+.card-levels{display:flex;flex-direction:column;gap:5px;margin:8px 0 10px}
+.edit-card-btn{background:transparent;border:1px solid #1e2330;color:#6b7585;border-radius:4px;padding:4px 10px;font-size:11px;width:100%}
+.price-box{background:#0d1017;border-radius:6px;padding:8px 10px;margin:6px 0}
+.price-loading{font-size:11px;color:#6b7585;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.price-unavail{font-size:11px;color:#6b7585;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+
+.detail-wrap{max-width:780px;margin:0 auto}
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.detail-ticker{font-size:28px;font-weight:900;color:#3b82f6;letter-spacing:2px}
+.detail-meta{font-size:11px;color:#6b7585;margin-top:5px}
+.detail-btns{display:flex;gap:8px}
+.section{background:#111418;border:1px solid #1e2330;border-radius:8px;padding:18px;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:700;margin-bottom:14px;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
+.live-price-big{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.live-price-label{font-size:11px;color:#6b7585;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.live-price-num{font-size:24px;font-weight:900}
+.live-change-num{font-size:16px;font-weight:700}
+.live-change-pct{font-size:12px}
+.pre-post-row{margin-top:10px;padding:8px 10px;background:#0d1017;border-radius:5px;font-size:12px;display:flex;gap:16px;flex-wrap:wrap}
+.scenario-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.scenario-tab{background:transparent;border:1px solid #1e2330;color:#6b7585;padding:5px 12px;font-size:12px}
+.scenario-tab.active{background:#3b82f622;color:#3b82f6;border-color:#3b82f666}
+.scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.scenario-row{display:flex;justify-content:space-between;align-items:center;background:#0d1017;border-radius:5px;padding:8px 12px}
+.sc-label{font-size:12px;color:#6b7585}
+.sc-val{font-size:14px;font-weight:700}
+.targets-box{margin-top:10px;padding:10px 12px;background:#0d1017;border-radius:5px}
+.targets-label{font-size:10px;color:#6b7585;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.targets-list{display:flex;gap:10px;flex-wrap:wrap}
+.target-chip{background:#10b98122;color:#10b981;border:1px solid #10b98133;border-radius:4px;padding:3px 8px;font-size:12px}
+.alarm-list{display:flex;flex-direction:column;gap:8px}
+.alarm-item{display:flex;align-items:flex-start;gap:10px;background:#1a0d0d;border:1px solid #ef444422;border-radius:5px;padding:8px 12px}
+.alarm-num{background:#ef4444;color:#fff;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:700;flex-shrink:0}
+.alarm-text{font-size:12px;color:#fca5a5;line-height:1.5}
+.notes-text{font-size:12px;color:#6b7585;line-height:1.7;white-space:pre-wrap}
+
+.form-wrap{max-width:740px;margin:0 auto}
+.form-title{font-size:18px;font-weight:800;margin-bottom:20px;letter-spacing:.5px}
+.form-section{background:#111418;border:1px solid #1e2330;border-radius:8px;padding:18px;margin-bottom:14px}
+.form-section-title{font-size:11px;font-weight:700;margin-bottom:14px;text-transform:uppercase;letter-spacing:1px;color:#6b7585}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.field{display:flex;flex-direction:column;gap:4px;flex:1 1 140px;min-width:120px}
+.field label{font-size:10px;color:#6b7585;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select,.field textarea{background:#0d1017;border:1px solid #1e2330;border-radius:5px;padding:7px 10px;color:#e4e8f0;font-size:13px;font-family:inherit;outline:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#3b82f6}
+.field .hint{font-size:10px;color:#6b7585;margin-top:2px}
+.field textarea{resize:vertical}
+.curr-toggle{display:flex;gap:6px}
+.curr-btn{background:transparent;border:1px solid #1e2330;color:#6b7585;padding:6px 16px;font-size:13px;font-weight:600;border-radius:5px}
+.curr-btn.active{background:#3b82f622;color:#3b82f6;border-color:#3b82f666}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+select option{background:#111418}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div style="display:flex;align-items:center">
+    <span class="logo">TR</span>
+    <div>
+      <div class="app-title">Aktien Tracker</div>
+      <div class="app-sub">Trade Republic · Knock-out Zertifikate</div>
+    </div>
+  </div>
+  <div id="header-right">
+    <span id="saved-badge" class="saved-badge" style="display:none">✓ Gespeichert</span>
+    <button id="btn-back" class="btn-back" style="display:none" onclick="goBack()">← Übersicht</button>
+    <button id="btn-add" class="btn-primary" onclick="openEdit(null)">+ Aktie hinzufügen</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="view-dashboard" class="view active">
+    <div class="filters" id="filters"></div>
+    <div id="stock-grid"></div>
+  </div>
+  <div id="view-detail" class="view">
+    <div class="detail-wrap" id="detail-content"></div>
+  </div>
+  <div id="view-edit" class="view">
+    <div class="form-wrap" id="form-content"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'tr-tracker-v2';
+const SCENARIO_KEYS = ['aggressive','moderate','conservative'];
+const SCENARIO_LABELS = {aggressive:'🔴 Aggressiv',moderate:'🟡 Moderat',conservative:'🟢 Konservativ'};
+const STATUS_LABELS = {
+  watchlist: '👁 Watchlist',
+  active:    '✅ Aktiv',
+  closed:    '📅 Handelswoche',
+  avoid:     '🔕 Nicht relevant'
+};
+const STATUS_COLORS = {watchlist:'#f59e0b',active:'#10b981',closed:'#6b7280',avoid:'#dc2626'};
+
+let stocks=[], currentView='dashboard', currentDetailId=null;
+let currentScenario='moderate', filterStatus='all', editData=null;
+const priceCache={};
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+function load(){try{const r=localStorage.getItem(STORAGE_KEY);if(r)stocks=JSON.parse(r);}catch{}}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(stocks));}catch{}showSaved();}
+function showSaved(){const b=document.getElementById('saved-badge');b.style.display='inline';setTimeout(()=>b.style.display='none',1800);}
+
+// ── Yahoo Finance ─────────────────────────────────────────────────────────────
+function toYahooTicker(sym){
+  if(!sym)return null;
+  const p=sym.trim().toUpperCase().split(':');
+  const[ex,tk]=p.length>=2?p:[null,p[0]];
+  const m={XETRA:'DE',ETR:'DE',FWB:'DE',LSE:'L',LON:'L',EPA:'PA',AMS:'AS',BIT:'MI',BME:'MC',TSX:'TO',ASX:'AX',STO:'ST'};
+  if(!ex)return tk;
+  return m[ex]?`${tk}.${m[ex]}`:tk;
+}
+
+function parseV7(data){
+  const q=data?.quoteResponse?.result?.[0];
+  if(!q?.regularMarketPrice)return null;
+  const price=q.regularMarketPrice,chg=q.regularMarketChange??0,pct=q.regularMarketChangePercent??0;
+  const state=q.marketState||'',isOpen=state==='REGULAR';
+  const lbl=isOpen?'':state==='PRE'?' (Pre)':state.startsWith('POST')?' (After)':' (Schluss)';
+  const pre=q.preMarketPrice?{price:q.preMarketPrice.toFixed(2),pct:(q.preMarketChangePercent>=0?'+':'')+q.preMarketChangePercent?.toFixed(2)+'%'}:null;
+  const post=q.postMarketPrice?{price:q.postMarketPrice.toFixed(2),pct:(q.postMarketChangePercent>=0?'+':'')+q.postMarketChangePercent?.toFixed(2)+'%'}:null;
+  return{price:price.toFixed(2),change:(chg>=0?'+':'')+chg.toFixed(2),changePct:(pct>=0?'+':'')+pct.toFixed(2)+'%',currency:q.currency||'USD',label:lbl,isOpen,pre,post};
+}
+
+function parseV8(data){
+  const meta=data?.chart?.result?.[0]?.meta;
+  if(!meta)return null;
+  const price=meta.regularMarketPrice||meta.previousClose;
+  if(!price)return null;
+  const prev=meta.chartPreviousClose||meta.previousClose||price,chg=price-prev,pct=prev?(chg/prev*100):0;
+  const state=meta.marketState||'',isOpen=state==='REGULAR';
+  const lbl=isOpen?'':state==='PRE'?' (Pre)':state.startsWith('POST')?' (After)':' (Schluss)';
+  return{price:price.toFixed(2),change:(chg>=0?'+':'')+chg.toFixed(2),changePct:(pct>=0?'+':'')+pct.toFixed(2)+'%',currency:meta.currency||'USD',label:lbl,isOpen,pre:null,post:null};
+}
+
+async function fetchPrice(tvSymbol){
+  if(priceCache[tvSymbol])return priceCache[tvSymbol];
+  const ticker=toYahooTicker(tvSymbol);
+  if(!ticker)return null;
+  const v7=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent,currency,marketState`;
+  const v8=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d&includePrePost=true`;
+  const proxies=[
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+  for(const[url,parser]of[[v7,parseV7],[v8,parseV8]]){
+    try{const r=await fetch(url,{headers:{Accept:'application/json'}});if(r.ok){const d=await r.json();const p=parser(d);if(p){priceCache[tvSymbol]=p;return p;}}}catch{}
+  }
+  for(const proxy of proxies){
+    for(const[url,parser]of[[v7,parseV7],[v8,parseV8]]){
+      try{
+        const r=await fetch(proxy(url));if(!r.ok)continue;
+        const raw=await r.json();
+        const d=raw?.contents?JSON.parse(raw.contents):raw;
+        const p=parser(d);if(p){priceCache[tvSymbol]=p;return p;}
+      }catch{}
+    }
+  }
+  return null;
+}
+
+// ── Color & blink logic ───────────────────────────────────────────────────────
+
+// KO color: white normally, red if live price within 1% of KO level
+function koColor(stock, priceData, koValue){
+  if(!priceData||!koValue)return '#e4e8f0';
+  const ko=parseFloat(koValue),price=parseFloat(priceData.price);
+  if(isNaN(ko)||isNaN(price)||ko<=0)return '#e4e8f0';
+  const diff=Math.abs(price-ko)/ko;
+  return diff<=0.01?'#ef4444':'#e4e8f0';
+}
+
+// Entry USD color: blue normally, green if live USD price within ±0.7% of entryUSD
+function entryUSDColor(entryUSD, priceData){
+  if(!priceData||!entryUSD)return '#60a5fa';
+  const entry=parseFloat(entryUSD),price=parseFloat(priceData.price);
+  if(isNaN(entry)||isNaN(price)||entry<=0)return '#60a5fa';
+  const diff=Math.abs(price-entry)/entry;
+  return diff<=0.007?'#10b981':'#60a5fa';
+}
+
+// Blink: live price within 1.5% of any stored entry zone
+// For USD stocks: compare live USD price to entryUSD values
+// For EUR stocks: compare live EUR price to entryEUR values
+function shouldBlink(stock, priceData){
+  if(!priceData)return false;
+  const livePrice=parseFloat(priceData.price);
+  if(isNaN(livePrice))return false;
+  for(const sc of SCENARIO_KEYS){
+    const s=stock.scenarios[sc];
+    // Primary: compare USD price to entryUSD (for USD stocks)
+    if(stock.currency==='USD'&&s.entryUSD){
+      const entry=parseFloat(s.entryUSD);
+      if(!isNaN(entry)&&entry>0&&Math.abs(livePrice-entry)/entry<=0.015)return true;
+    }
+    // Fallback: compare EUR price to entryEUR
+    if(s.entryEUR){
+      let livePriceEUR=livePrice;
+      if(priceData.currency==='USD'&&stock.eurUsd){
+        livePriceEUR=livePrice/parseFloat(stock.eurUsd);
+      }
+      const entry=parseFloat(s.entryEUR);
+      if(!isNaN(livePriceEUR)&&!isNaN(entry)&&entry>0&&Math.abs(livePriceEUR-entry)/entry<=0.015)return true;
+    }
+  }
+  return false;
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('btn-back').style.display=name==='dashboard'?'none':'inline-block';
+  document.getElementById('btn-add').style.display=name==='dashboard'?'inline-block':'none';
+  currentView=name;window.scrollTo(0,0);
+}
+function goBack(){showView('dashboard');renderDashboard();}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const fil=document.getElementById('filters');
+  const cnt={all:stocks.length,watchlist:0,active:0,closed:0,avoid:0};
+  stocks.forEach(s=>{if(cnt[s.status]!==undefined)cnt[s.status]++;});
+  fil.innerHTML=['all','watchlist','active','closed','avoid'].map(f=>
+    `<button class="filter-btn${filterStatus===f?' active':''}" onclick="setFilter('${f}')">
+      ${f==='all'?`📊 Alle (${cnt.all})`:STATUS_LABELS[f]}
+    </button>`).join('');
+
+  const filtered=filterStatus==='all'?stocks:stocks.filter(s=>s.status===filterStatus);
+  const grid=document.getElementById('stock-grid');
+  if(!filtered.length){
+    grid.innerHTML=`<div class="empty"><div style="font-size:44px;margin-bottom:12px">📈</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">Noch keine Aktien</div><div>Füge deine erste Aktie aus der Analyse hinzu.</div></div>`;
+    return;
+  }
+  grid.innerHTML=`<div class="grid">${filtered.map(s=>cardHTML(s)).join('')}</div>`;
+  filtered.filter(s=>s.tvSymbol).forEach(s=>loadCardPrice(s.id,s.tvSymbol));
+}
+
+function setFilter(f){filterStatus=f;renderDashboard();}
+
+function cardHTML(s){
+  const sc=s.scenarios?.moderate||{};
+  const stc=STATUS_COLORS[s.status];
+  return `<div class="card" onclick="openDetail('${s.id}')">
+    <div class="card-top">
+      <div><span class="ticker-big">${s.ticker||'—'}</span><span class="currency-tag">${s.currency}</span></div>
+      <span class="status-badge" style="background:${stc}22;color:${stc};border:1px solid ${stc}44">${STATUS_LABELS[s.status]}</span>
+    </div>
+    <div id="price-card-${s.id}" class="price-box">
+      ${s.tvSymbol?`<div class="price-loading"><span>⏳ Kurs wird geladen…</span><a href="https://www.tradingview.com/symbols/${s.tvSymbol}/" target="_blank" class="tv-link" onclick="event.stopPropagation()">📈 TradingView ↗</a></div>`:''}
+    </div>
+    <div class="card-levels">
+      ${sc.entryUSD?`<div class="price-row"><span class="price-label">Entry USD (Moderat)</span><span class="price-val" id="entry-usd-card-${s.id}" style="color:#60a5fa">$${sc.entryUSD}</span></div>`:''}
+      ${sc.entryEUR?`<div class="price-row"><span class="price-label">Entry EUR (Moderat)</span><span class="price-val" style="color:#f59e0b">€${sc.entryEUR}</span></div>`:''}
+      ${sc.ko?`<div class="price-row"><span class="price-label">KO-Level</span><span class="price-val" id="ko-card-${s.id}" style="color:#e4e8f0">${s.currency==='USD'?'$':'€'}${sc.ko}</span></div>`:''}
+      ${s.currency==='USD'&&s.eurUsd?`<div class="price-row"><span class="price-label">EUR/USD</span><span class="price-val" style="color:#6b7585">${s.eurUsd}</span></div>`:''}
+    </div>
+    <button class="edit-card-btn" onclick="event.stopPropagation();openEdit('${s.id}')">✏️ Bearbeiten</button>
+  </div>`;
+}
+
+async function loadCardPrice(id,tvSymbol){
+  const el=document.getElementById(`price-card-${id}`);
+  if(!el)return;
+  const p=await fetchPrice(tvSymbol);
+  const stock=stocks.find(s=>s.id===id);
+  const tvHref=`https://www.tradingview.com/symbols/${tvSymbol}/`;
+  const tvLink=`<a href="${tvHref}" target="_blank" class="tv-link" onclick="event.stopPropagation()">📈 TradingView ↗</a>`;
+  if(!p){
+    el.innerHTML=`<div class="price-unavail"><div><span>Kurs nicht verfügbar</span> <button class="btn-refresh" onclick="event.stopPropagation();reloadCardPrice('${id}','${tvSymbol}')">↻</button></div>${tvLink}</div>`;
+    return;
+  }
+  const chgClr=p.change.startsWith('+')?'#10b981':'#ef4444';
+  const sym=p.currency==='EUR'?'€':'$';
+  const blink=stock&&shouldBlink(stock,p);
+  const blinkClass=blink?' price-blink':'';
+
+  // Update KO color on card
+  if(stock){
+    const sc=stock.scenarios?.moderate||{};
+    const koEl=document.getElementById(`ko-card-${id}`);
+    if(koEl&&sc.ko)koEl.style.color=koColor(stock,p,sc.ko);
+    const entryUSDEl=document.getElementById(`entry-usd-card-${id}`);
+    if(entryUSDEl&&sc.entryUSD)entryUSDEl.style.color=entryUSDColor(sc.entryUSD,p);
+  }
+
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px;font-weight:800${blink?';color:#f59e0b':''}" class="${blinkClass}">${sym}${p.price}</span>
+      <span style="font-size:12px;font-weight:600;color:${chgClr}">${p.change} (${p.changePct})</span>
+      ${p.label?`<span style="font-size:10px;color:#6b7585;border:1px solid #1e2330;border-radius:3px;padding:1px 5px">${p.label}</span>`:''}
+      <button class="btn-refresh" onclick="event.stopPropagation();reloadCardPrice('${id}','${tvSymbol}')">↻</button>
+    </div>
+    ${tvLink}
+  </div>
+  ${p.pre||p.post?`<div style="margin-top:5px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap">
+    ${p.pre?`<span style="color:#a78bfa">Pre: $${p.pre.price} <span style="opacity:.8">${p.pre.pct}</span></span>`:''}
+    ${p.post?`<span style="color:#60a5fa">Post: $${p.post.price} <span style="opacity:.8">${p.post.pct}</span></span>`:''}
+  </div>`:''}`;
+}
+
+function reloadCardPrice(id,sym){
+  delete priceCache[sym];
+  const el=document.getElementById(`price-card-${id}`);
+  if(el)el.innerHTML=`<div class="price-loading"><span>⏳ Kurs wird geladen…</span></div>`;
+  loadCardPrice(id,sym);
+}
+
+// ── Detail ────────────────────────────────────────────────────────────────────
+function openDetail(id){currentDetailId=id;currentScenario='moderate';renderDetail();showView('detail');}
+
+function renderDetail(){
+  const s=stocks.find(x=>x.id===currentDetailId);
+  if(!s)return;
+  const c=s.currency,stc=STATUS_COLORS[s.status];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="detail-head">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="detail-ticker">${s.ticker}</span>
+          <span class="currency-tag" style="font-size:13px;padding:3px 10px">${c}</span>
+          <span class="status-badge" style="background:${stc}22;color:${stc};border:1px solid ${stc}44">${STATUS_LABELS[s.status]}</span>
+        </div>
+        ${s.tvSymbol?`<div class="detail-meta">📡 ${s.tvSymbol}</div>`:''}
+        ${c==='USD'&&s.eurUsd?`<div class="detail-meta">EUR/USD: <b style="color:#e4e8f0">${s.eurUsd}</b></div>`:''}
+      </div>
+      <div class="detail-btns">
+        <button class="btn-secondary" onclick="openEdit('${s.id}')">✏️ Bearbeiten</button>
+        <button class="btn-danger" id="del-btn" onclick="confirmDelete('${s.id}')">🗑 Löschen</button>
+      </div>
+    </div>
+
+    ${s.tvSymbol?`<div class="section">
+      <div class="section-title">
+        <span>📈 Live Kurs – ${s.tvSymbol}</span>
+        <a href="https://www.tradingview.com/symbols/${s.tvSymbol}/" target="_blank" class="tv-link">TradingView ↗</a>
+      </div>
+      <div id="price-detail-${s.id}">
+        <div class="price-loading"><span>⏳ Kurs wird geladen…</span></div>
+      </div>
+    </div>`:''}
+
+    <div class="section">
+      <div class="section-title">🎯 Einstiegsszenarien</div>
+      <div class="scenario-tabs">
+        ${SCENARIO_KEYS.map(k=>`<button class="scenario-tab${currentScenario===k?' active':''}" onclick="switchScenario('${k}')">${SCENARIO_LABELS[k]}</button>`).join('')}
+      </div>
+      <div class="scenario-grid" id="scenario-grid"></div>
+      <div id="targets-box"></div>
+    </div>
+
+    ${s.alarms?.some(a=>a)?`<div class="section">
+      <div class="section-title">🚨 Alarmsignale – Trade sofort beenden</div>
+      <div class="alarm-list">
+        ${s.alarms.map((a,i)=>a?`<div class="alarm-item"><span class="alarm-num">${i+1}</span><span class="alarm-text">${a}</span></div>`:'').join('')}
+      </div>
+    </div>`:''}
+
+    ${s.notes?`<div class="section">
+      <div class="section-title">📝 Notizen</div>
+      <p class="notes-text">${s.notes}</p>
+    </div>`:''}
+  `;
+  renderScenarioGrid();
+  if(s.tvSymbol)loadDetailPrice(s.id,s.tvSymbol);
+}
+
+function renderScenarioGrid(priceData){
+  const s=stocks.find(x=>x.id===currentDetailId);
+  if(!s)return;
+  const sc=s.scenarios[currentScenario]||{};
+  const c=s.currency,koPfx=c==='USD'?'$':'€';
+  const koLbl=c==='USD'?'KO-Level (USD $)':'KO-Level (EUR €)';
+  const p=priceData||priceCache[s.tvSymbol]||null;
+
+  const koClr=koColor(s,p,sc.ko);
+  const entryUSDClr=entryUSDColor(sc.entryUSD,p);
+  const entryStr=sc.entryUSD?`<span style="color:${entryUSDClr}">$${sc.entryUSD}</span>`:'—';
+  const entryEURStr=sc.entryEUR?`<span style="color:#f59e0b">€${sc.entryEUR}</span>`:'—';
+
+  document.getElementById('scenario-grid').innerHTML=`
+    ${srow('Entry USD $',entryStr)}
+    ${srow('Entry EUR €',entryEURStr)}
+    ${srow(koLbl,sc.ko?`<span style="color:${koClr};transition:color .3s">${koPfx}${sc.ko}</span>`:'—')}
+    ${srow('Hebel (ca.)',sc.leverage?`<span style="color:#a78bfa">${sc.leverage}x</span>`:'—')}
+    ${srow('R/R',sc.rr?`<span style="color:#60a5fa">1 : ${sc.rr}</span>`:'—')}
+    ${srow('Max. Kapital',sc.capital?`<span style="color:#f59e0b">${sc.capital}%</span>`:'—')}
+  `;
+  const tb=document.getElementById('targets-box');
+  if(sc.target1||sc.target2||sc.target3){
+    tb.innerHTML=`<div class="targets-box"><div class="targets-label">Kursziele</div><div class="targets-list">
+      ${sc.target1?`<span class="target-chip">🎯 Ziel 1: ${sc.target1}</span>`:''}
+      ${sc.target2?`<span class="target-chip">🎯 Ziel 2: ${sc.target2}</span>`:''}
+      ${sc.target3?`<span class="target-chip">🎯 Ziel 3: ${sc.target3}</span>`:''}
+    </div></div>`;
+  } else if(tb) tb.innerHTML='';
+}
+
+function srow(label,value){
+  return `<div class="scenario-row"><span class="sc-label">${label}</span><span class="sc-val">${value}</span></div>`;
+}
+
+function switchScenario(sc){currentScenario=sc;renderDetail();}
+
+async function loadDetailPrice(id,tvSymbol){
+  const el=document.getElementById(`price-detail-${id}`);
+  if(!el)return;
+  const p=await fetchPrice(tvSymbol);
+  const stock=stocks.find(x=>x.id===id);
+  const tvLink=`<a href="https://www.tradingview.com/symbols/${tvSymbol}/" target="_blank" class="tv-link">📈 TradingView ↗</a>`;
+  if(!p){
+    el.innerHTML=`<div class="price-unavail"><div><span>Kurs nicht verfügbar</span> <button class="btn-refresh" onclick="reloadDetailPrice('${id}','${tvSymbol}')">↻ Erneut</button></div>${tvLink}</div>`;
+    return;
+  }
+  const chgClr=p.change.startsWith('+')?'#10b981':'#ef4444';
+  const sym=p.currency==='EUR'?'€':'$';
+  const blink=stock&&shouldBlink(stock,p);
+  const blinkClass=blink?' price-blink':'';
+  const stateLabel=p.isOpen?'🟢 Live Kurs':'⚫ Letzter Kurs';
+
+  el.innerHTML=`<div class="live-price-big">
+    <div>
+      <div class="live-price-label">${stateLabel}${p.label}</div>
+      <div class="live-price-num${blinkClass}" style="${blink?'color:#f59e0b':''}">${sym}${p.price}</div>
+    </div>
+    <div>
+      <div class="live-price-label">Änderung</div>
+      <div class="live-change-num" style="color:${chgClr}">${p.change}</div>
+      <div class="live-change-pct" style="color:${chgClr}">${p.changePct}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="btn-refresh-lg" onclick="reloadDetailPrice('${id}','${tvSymbol}')">↻ Aktualisieren</button>
+    </div>
+  </div>
+  ${p.pre||p.post?`<div class="pre-post-row">
+    ${p.pre?`<span style="color:#a78bfa">◀ Pre-Market: <b>$${p.pre.price}</b> ${p.pre.pct}</span>`:''}
+    ${p.post?`<span style="color:#60a5fa">▶ After-Market: <b>$${p.post.price}</b> ${p.post.pct}</span>`:''}
+  </div>`:''}`;
+
+  // Re-render scenario grid with live price for color updates
+  renderScenarioGrid(p);
+}
+
+function reloadDetailPrice(id,sym){
+  delete priceCache[sym];
+  const el=document.getElementById(`price-detail-${id}`);
+  if(el)el.innerHTML=`<div class="price-loading"><span>⏳ Kurs wird geladen…</span></div>`;
+  loadDetailPrice(id,sym);
+}
+
+function confirmDelete(id){
+  const btn=document.getElementById('del-btn');
+  if(btn.dataset.confirm==='1'){stocks=stocks.filter(s=>s.id!==id);save();goBack();}
+  else{btn.textContent='Bestätigen?';btn.classList.add('confirm');btn.dataset.confirm='1';setTimeout(()=>{btn.textContent='🗑 Löschen';btn.classList.remove('confirm');btn.dataset.confirm='';},3000);}
+}
+
+// ── Edit Form ─────────────────────────────────────────────────────────────────
+function blankSc(){return{entryUSD:'',entryEUR:'',ko:'',leverage:'',rr:'',target1:'',target2:'',target3:'',capital:''};}
+
+function openEdit(id){
+  const ex=id?stocks.find(s=>s.id===id):null;
+  if(ex){
+    // Migrate old data: ensure entryUSD exists
+    SCENARIO_KEYS.forEach(sk=>{if(ex.scenarios[sk]&&ex.scenarios[sk].entryUSD===undefined)ex.scenarios[sk].entryUSD='';});
+  }
+  editData=ex?JSON.parse(JSON.stringify(ex)):{
+    id:null,ticker:'',tvSymbol:'',currency:'USD',eurUsd:'',
+    scenarios:{aggressive:blankSc(),moderate:blankSc(),conservative:blankSc()},
+    alarms:['','','','',''],notes:'',status:'watchlist',createdAt:null
+  };
+  renderForm();showView('edit');
+}
+
+function renderForm(){
+  const s=editData,c=s.currency;
+  const koLbl=c==='USD'?'KO-Level (USD $)':'KO-Level (EUR €)';
+  const koPh=c==='USD'?'$ KO-Level':'€ KO-Level';
+  const tvPh=c==='USD'?'z.B. PLTR  |  NASDAQ:NVDA':'z.B. XETRA:SAP  |  FWB:SIE';
+
+  document.getElementById('form-content').innerHTML=`
+    <div class="form-title">${s.id?'Aktie bearbeiten':'Neue Aktie eintragen'}</div>
+
+    <div class="form-section">
+      <div class="form-section-title">Grunddaten</div>
+      <div class="form-row">
+        <div class="field">
+          <label>Ticker</label>
+          <input value="${s.ticker}" oninput="editData.ticker=this.value.toUpperCase();this.value=editData.ticker" placeholder="z.B. NVDA">
+        </div>
+        <div class="field">
+          <label>Währung</label>
+          <div class="curr-toggle">
+            <button class="curr-btn${c==='USD'?' active':''}" onclick="setCurrency('USD')">USD</button>
+            <button class="curr-btn${c==='EUR'?' active':''}" onclick="setCurrency('EUR')">EUR</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select onchange="editData.status=this.value">
+            <option value="watchlist"${s.status==='watchlist'?' selected':''}>👁 Watchlist</option>
+            <option value="active"${s.status==='active'?' selected':''}>✅ Aktiv</option>
+            <option value="closed"${s.status==='closed'?' selected':''}>📅 Handelswoche</option>
+            <option value="avoid"${s.status==='avoid'?' selected':''}>🔕 Nicht relevant</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field" style="flex:2 1 260px">
+          <label>TradingView Symbol</label>
+          <input value="${s.tvSymbol}" oninput="editData.tvSymbol=this.value.toUpperCase();this.value=editData.tvSymbol" placeholder="${tvPh}">
+          <span class="hint">Ticker direkt (PLTR) oder mit Börse (NYSE:PLTR)</span>
+        </div>
+        ${c==='USD'?`<div class="field"><label>EUR/USD Kurs</label><input value="${s.eurUsd}" oninput="editData.eurUsd=this.value" placeholder="z.B. 1.082"><span class="hint">Für KO-Vergleich in €</span></div>`:''}
+      </div>
+    </div>
+
+    ${SCENARIO_KEYS.map(sc=>`
+    <div class="form-section">
+      <div class="form-section-title">${SCENARIO_LABELS[sc]}</div>
+      <div class="form-row">
+        <div class="field">
+          <label>Entry USD $</label>
+          <input value="${s.scenarios[sc].entryUSD||''}" oninput="editData.scenarios['${sc}'].entryUSD=this.value" placeholder="$ Einstieg">
+        </div>
+        <div class="field">
+          <label>Entry EUR €</label>
+          <input value="${s.scenarios[sc].entryEUR||''}" oninput="editData.scenarios['${sc}'].entryEUR=this.value" placeholder="€ Einstieg">
+        </div>
+        <div class="field">
+          <label>${koLbl}</label>
+          <input value="${s.scenarios[sc].ko||''}" oninput="editData.scenarios['${sc}'].ko=this.value" placeholder="${koPh}">
+        </div>
+        <div class="field">
+          <label>Hebel</label>
+          <input value="${s.scenarios[sc].leverage||''}" oninput="editData.scenarios['${sc}'].leverage=this.value" placeholder="z.B. 8">
+        </div>
+        <div class="field">
+          <label>R/R (1:X)</label>
+          <input value="${s.scenarios[sc].rr||''}" oninput="editData.scenarios['${sc}'].rr=this.value" placeholder="z.B. 2.5">
+        </div>
+        <div class="field">
+          <label>Max.Kap.%</label>
+          <input value="${s.scenarios[sc].capital||''}" oninput="editData.scenarios['${sc}'].capital=this.value" placeholder="z.B. 5">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Ziel 1</label><input value="${s.scenarios[sc].target1||''}" oninput="editData.scenarios['${sc}'].target1=this.value" placeholder="z.B. $145"></div>
+        <div class="field"><label>Ziel 2</label><input value="${s.scenarios[sc].target2||''}" oninput="editData.scenarios['${sc}'].target2=this.value" placeholder="z.B. $160"></div>
+        <div class="field"><label>Ziel 3</label><input value="${s.scenarios[sc].target3||''}" oninput="editData.scenarios['${sc}'].target3=this.value" placeholder="z.B. $175"></div>
+      </div>
+    </div>`).join('')}
+
+    <div class="form-section">
+      <div class="form-section-title">🚨 Alarmsignale (max. 5)</div>
+      ${s.alarms.map((a,i)=>`
+      <div class="field" style="margin-bottom:8px">
+        <label>Alarm ${i+1}</label>
+        <input value="${a}" oninput="editData.alarms[${i}]=this.value" placeholder="${i===4?'Kursverlust >X% ohne Erholung → schließen':'Konkretes Ereignis → Zertifikat sofort schließen'}">
+      </div>`).join('')}
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">📝 Notizen</div>
+      <div class="field"><textarea rows="4" oninput="editData.notes=this.value" placeholder="Analyse-Notizen, Besonderheiten, Katalysatoren...">${s.notes}</textarea></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="goBack()">Abbrechen</button>
+      <button class="btn-primary" onclick="saveStock()">💾 Speichern</button>
+    </div>
+  `;
+}
+
+function setCurrency(c){editData.currency=c;renderForm();}
+
+function saveStock(){
+  const s=editData;
+  if(!s.id){s.id=Date.now().toString();s.createdAt=new Date().toISOString();stocks.push(s);}
+  else{const i=stocks.findIndex(x=>x.id===s.id);if(i>=0)stocks[i]=s;}
+  save();goBack();renderDashboard();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+load();renderDashboard();showView('dashboard');
+</script>
+</body>
+</html>
