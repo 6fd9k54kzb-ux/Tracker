@@ -25,7 +25,16 @@ body{background:#0a0c0f;color:#e4e8f0;font-family:'IBM Plex Mono','Courier New',
 .app-sub{font-size:11px;color:#6b7585;margin-top:1px}
 #header-right{display:flex;align-items:center;gap:8px}
 .saved-badge{background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:4px;padding:3px 10px;font-size:12px}
-
+.io-btn{background:transparent;color:#6b7585;border:1px solid #1e2330;padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;font-family:inherit}
+.io-btn:hover{border-color:#3b82f6;color:#3b82f6}
+.io-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.io-overlay.active{display:flex}
+.io-modal{background:#111418;border:1px solid #1e2330;border-radius:10px;padding:20px;max-width:480px;width:100%}
+.io-modal h3{font-size:14px;margin-bottom:12px;font-weight:700}
+.io-modal textarea{width:100%;background:#0d1017;border:1px solid #1e2330;border-radius:6px;color:#e4e8f0;font-family:inherit;font-size:11px;padding:10px;resize:vertical;outline:none;min-height:120px}
+.io-modal .io-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.io-hint{font-size:11px;color:#6b7585;margin-top:8px;line-height:1.5}
+  
 button{font-family:inherit;cursor:pointer;border-radius:5px;font-size:13px;padding:7px 14px;transition:opacity .15s}
 button:active{opacity:.7}
 .btn-primary{background:#3b82f6;color:#fff;border:none;font-weight:600}
@@ -122,6 +131,8 @@ select option{background:#111418}
     </div>
   </div>
   <div id="header-right">
+    <button class="io-btn" onclick="openExportModal()">📤 Export</button>
+    <button class="io-btn" onclick="openImportModal()">📥 Import</button>
     <span id="saved-badge" class="saved-badge" style="display:none">✓ Gespeichert</span>
     <button id="btn-back" class="btn-back" style="display:none" onclick="goBack()">← Übersicht</button>
     <button id="btn-add" class="btn-primary" onclick="openEdit(null)">+ Aktie hinzufügen</button>
@@ -140,7 +151,9 @@ select option{background:#111418}
     <div class="form-wrap" id="form-content"></div>
   </div>
 </div>
-
+<div id="io-overlay" class="io-overlay" onclick="if(event.target===this)closeIOModal()">
+  <div class="io-modal" id="io-modal-content"></div>
+</div>
 <script>
 const STORAGE_KEY = 'tr-tracker-v2';
 const SCENARIO_KEYS = ['aggressive','moderate','conservative'];
@@ -688,7 +701,62 @@ function saveStock(){
   else{const i=stocks.findIndex(x=>x.id===s.id);if(i>=0)stocks[i]=s;}
   save();goBack();renderDashboard();
 }
+function openExportModal(){
+  const json=localStorage.getItem(STORAGE_KEY)||'[]';
+  document.getElementById('io-modal-content').innerHTML=`
+    <h3>📤 Daten exportieren</h3>
+    <textarea id="io-export-text" readonly onclick="this.select()">${json.replace(/</g,'&lt;')}</textarea>
+    <div class="io-hint">Text kopieren (Tippen & Halten → Alles auswählen → Kopieren) und auf dem anderen Gerät unter „📥 Import" einfügen.</div>
+    <div class="io-actions">
+      <button class="btn-secondary" onclick="closeIOModal()">Schließen</button>
+      <button class="btn-primary" onclick="copyExportText()">📋 Kopieren</button>
+    </div>`;
+  document.getElementById('io-overlay').classList.add('active');
+}
 
+function copyExportText(){
+  const ta=document.getElementById('io-export-text');
+  ta.select();ta.setSelectionRange(0,999999);
+  try{
+    document.execCommand('copy');
+    if(navigator.clipboard)navigator.clipboard.writeText(ta.value).catch(()=>{});
+    alert('✅ Kopiert! Jetzt auf dem anderen Gerät einfügen.');
+  }catch(e){
+    alert('Bitte den Text manuell markieren und kopieren.');
+  }
+}
+
+function openImportModal(){
+  document.getElementById('io-modal-content').innerHTML=`
+    <h3>📥 Daten importieren</h3>
+    <textarea id="io-import-text" placeholder="Hier den exportierten Text einfügen…"></textarea>
+    <div class="io-hint">⚠️ Überschreibt alle aktuell auf diesem Gerät gespeicherten Aktien.</div>
+    <div class="io-actions">
+      <button class="btn-secondary" onclick="closeIOModal()">Abbrechen</button>
+      <button class="btn-primary" onclick="confirmImport()">Importieren</button>
+    </div>`;
+  document.getElementById('io-overlay').classList.add('active');
+}
+
+function confirmImport(){
+  const raw=document.getElementById('io-import-text').value.trim();
+  if(!raw){alert('Bitte zuerst Daten einfügen.');return;}
+  try{
+    const data=JSON.parse(raw);
+    if(!Array.isArray(data))throw new Error('not array');
+    stocks=data;
+    save();
+    closeIOModal();
+    goBack();
+    alert(`✅ ${data.length} Aktie(n) importiert!`);
+  }catch(e){
+    alert('❌ Ungültige Daten. Bitte den vollständigen Export-Text einfügen.');
+  }
+}
+
+function closeIOModal(){
+  document.getElementById('io-overlay').classList.remove('active');
+}
 // ── Init ──────────────────────────────────────────────────────────────────────
 load();renderDashboard();showView('dashboard');
 </script>
